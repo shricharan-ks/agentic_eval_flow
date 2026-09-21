@@ -10,9 +10,9 @@
 > | `networkpolicy-eval-stack.yaml` | Lets the eval stack, Tekton and kubelet probes talk, under the forge-workspace default-deny rules |
 > | `networkpolicy-saw-gateway.yaml` | Same, for the gateway VM and its setup Job |
 >
-> End-to-end instructions, including how to run an evaluation and read the
-> results, are in the repository README. Symptom-to-cause notes are in
-> `Docs/openshell-eval-troubleshooting.md`.
+> End-to-end instructions — deploy, configure, run an evaluation and read the
+> results — are in `Docs/openshell-eval-namespace-setup.md`. Symptom-to-cause
+> notes are in `Docs/openshell-eval-troubleshooting.md`.
 >
 > The sections below describe the earlier single-VM `abeval-saw` flow.
 
