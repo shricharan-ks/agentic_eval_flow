@@ -21,6 +21,16 @@ spec:
     matchLabels: {app.kubernetes.io/part-of: openshell-cnv-fedora}
   policyTypes: [Egress]
   egress:
+    # DNS — the chart's <release>-default policy allows this too, but do not
+    # depend on it: any policy selecting the pod makes unlisted egress denied.
+    - ports:
+        - {protocol: UDP, port: 5353}
+        - {protocol: TCP, port: 5353}
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+      to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: openshift-dns}
     - ports:
         - {protocol: TCP, port: 443}
         - {protocol: TCP, port: 6443}
@@ -31,6 +41,18 @@ spec:
     - to:
         - podSelector:
             matchLabels: {app.kubernetes.io/part-of: abevalflow}
+    # Image registries. The chart's own <release>-default policy selects the VM
+    # for Egress and allows only DNS, so podman inside the VM cannot pull the
+    # OpenShell binaries or the sandbox image: the setup Job fails with
+    # "pinging container registry ghcr.io: ... i/o timeout" and, because the
+    # upgrade step has already replaced the binaries, the gateway service then
+    # fails to start. Narrow this with an EgressFirewall if your cluster
+    # restricts egress by destination.
+    - ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+      to:
+        - ipBlock: {cidr: 0.0.0.0/0}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

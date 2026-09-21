@@ -51,6 +51,12 @@ vm:
 # podman inside the VM, so a dockerconfigjson pull secret is copied in.
 registryAuthSecret: ghcr-rh-forge-auth
 
+# The setup Job's own image is private too. Setting it here avoids a race:
+# linking the secret to the ServiceAccount after `helm install` is too late for
+# a Job pod that has already been created, which then sits in ImagePullBackOff.
+imagePullSecrets:
+  - name: ghcr-rh-forge-auth
+
 route:
   enabled: false
   dashboard: false
