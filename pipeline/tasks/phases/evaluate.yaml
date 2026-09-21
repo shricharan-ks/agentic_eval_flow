@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: evaluate
-  namespace: ab-eval-flow
   labels:
     app.kubernetes.io/name: abevalflow
     app.kubernetes.io/component: phase
@@ -1764,6 +1763,17 @@ spec:
           OS_ARCH="x86_64-unknown-linux-musl"
           curl -fsSL "https://github.com/NVIDIA/OpenShell/releases/download/v$(params.openshell-cli-version)/openshell-${OS_ARCH}.tar.gz" | tar -xz -C /tmp/bin openshell
           export PATH="/tmp/bin:$PATH"
+        fi
+
+        # The Forge AI gateway CA is only present when that gateway is deployed
+        # in the namespace. A standalone eval gateway has none, and the harness
+        # refuses to start when the variable names a file it cannot read
+        # ("AGENT_EVAL_FORGE_AI_GATEWAY_CA_FILE does not name a readable CA
+        # file"). Drop the variable rather than requiring an unrelated Secret.
+        if [ -n "${AGENT_EVAL_FORGE_AI_GATEWAY_CA_FILE:-}" ] \
+          && [ ! -r "${AGENT_EVAL_FORGE_AI_GATEWAY_CA_FILE}" ]; then
+          echo "No Forge AI gateway CA mounted; continuing without it."
+          unset AGENT_EVAL_FORGE_AI_GATEWAY_CA_FILE
         fi
 
         # Materialize the CI client certificate before registering the gateway.
