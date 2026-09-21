@@ -11,7 +11,11 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: kubevirt-csi-infra-default
+  # Omit storageClassName so the cluster's default StorageClass applies; minio.yaml
+  # and mlflow/pvc.yaml already do. Naming one that does not exist leaves the PVC
+  # Pending and the pod unschedulable ("pod has unbound immediate
+  # PersistentVolumeClaims"). Uncomment and set it if you need a specific class.
+  # storageClassName: kubevirt-csi-infra-default
 ---
 apiVersion: apps/v1
 kind: Deployment
