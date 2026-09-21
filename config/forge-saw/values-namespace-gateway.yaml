@@ -28,15 +28,16 @@ createClusterRBAC: false
 #   oc create secret generic forge-images-pull -n <ns> \
 #     --from-literal=accessKeyId=<ghcr-user> --from-literal=secretKey=<ghcr-token>
 #
-# NOTE: the chart hardcodes pullMethod: node in templates/virtualmachine.yaml,
-# and a node-level pull cannot use these credentials. Until that is fixed
-# upstream, patch the VM once after install:
+# pullMethod: pod is required for a private registry — a node-level pull cannot
+# use registryAuthSecret. Charts that predate the source.pullMethod fix ignore
+# this and need the VM patched once after install:
 #   oc patch vm <release> -n <ns> --type=json -p='[
 #     {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/pullMethod","value":"pod"},
 #     {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/secretRef","value":"forge-images-pull"}]'
 #   oc delete dv <release>-root -n <ns>      # re-imports with the corrected spec
 source:
   dataSource: ""
+  pullMethod: pod
   registryURL: "docker://ghcr.io/rh-forge/openshell-gateway:sha-6b22ce92017e6672b4aef2d20c9cc60a9cf7ebc1"
   registryAuthSecret: forge-images-pull
 

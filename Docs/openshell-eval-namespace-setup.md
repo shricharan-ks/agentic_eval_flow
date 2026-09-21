@@ -69,25 +69,26 @@ helm upgrade --install saw <forge-saw>/charts/openshell-saw -n "$NS" \
   --set sshPublicKey="$(cat ~/.forge-eval-keys/sandbox-ssh.pub)" \
   --set oidc.issuerUrl=https://<keycloak-host>/realms/<realm>
 
-# the chart hardcodes a node-level registry pull, which cannot use these
-# credentials — see the note in values-namespace-gateway.yaml
-oc patch vm saw -n "$NS" --type=json -p='[
-  {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/pullMethod","value":"pod"},
-  {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/secretRef","value":"forge-images-pull"}]'
-oc delete dv saw-root -n "$NS"
-
+# the setup Job pulls a private image, so its ServiceAccount needs the pull secret
 oc secrets link saw-setup ghcr-rh-forge-auth --for=pull -n "$NS"
 ```
 
-The setup Job fails on a `forge-saw` bug — it checks for a binary called
-`openssh`, which does not exist. Until that is fixed upstream:
+**forge-saw version.** `source.pullMethod: pod` in the values only takes effect
+on a chart that honours it. Older checkouts hardcode `pullMethod: node`, which
+cannot use `registryAuthSecret`, and the disk import then fails with
+`unable to retrieve auth token: invalid username/password`. Either use a chart
+containing the `source.pullMethod` fix, or patch the VM once after install:
 
 ```bash
-oc get cm saw-scripts -n "$NS" -o jsonpath='{.data.install-deps\.sh}' \
-  | sed 's/ openssh / ssh /' > /tmp/install-deps.sh
-oc set data cm/saw-scripts -n "$NS" --from-file=install-deps.sh=/tmp/install-deps.sh
-oc delete job saw-setup -n "$NS"; helm upgrade --install saw ... # re-run the install
+oc patch vm saw -n "$NS" --type=json -p='[
+  {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/pullMethod","value":"pod"},
+  {"op":"replace","path":"/spec/dataVolumeTemplates/0/spec/source/registry/secretRef","value":"forge-images-pull"}]'
+oc delete dv saw-root -n "$NS"     # re-imports with the corrected spec
 ```
+
+Checkouts older than forge-saw `f6d5934` also fail the setup Job with
+`setup image is missing required tool: openssh`; that check was corrected
+upstream to look for `ssh`, `scp` and `ssh-keygen`.
 
 Disk import plus VM boot takes 15–25 minutes. It is ready when
 `oc get job saw-setup -n "$NS"` reports Complete.
