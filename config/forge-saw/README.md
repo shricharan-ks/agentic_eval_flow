@@ -77,6 +77,27 @@ FORGE_SAW_PIN=<sha> FORGE_SAW_REPO=https://github.com/rh-forge/forge-saw.git \
   ./config/forge-saw/bootstrap.sh
 ```
 
+## Workspace membership (once per gateway)
+
+A gateway with OIDC enabled authenticates the CI service account but does not
+authorize it: every call comes back *"The caller does not have permission to
+execute the specified operation"*, and `openshell status` reports
+`Authenticated (OIDC; authorization denied)`. The gateway prints the remedy —
+run it as platform admin, which on the VM is the CLI using the
+`OU=openshell-admin` client certificate:
+
+```bash
+openshell workspace member add --workspace 'default' \
+  --subject '<oidc-subject-of-the-CI-client>' --role user
+```
+
+The subject is the `sub` of the token the pipeline obtains; `openshell whoami`
+from the evaluate step prints it. Verify with:
+
+```bash
+openshell workspace member list --workspace default
+```
+
 ## mTLS Secret (PipelineRun namespace)
 
 After the VM is Ready, copy client certs (forge-saw documents `virtctl scp` of
