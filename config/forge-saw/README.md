@@ -1,5 +1,21 @@
 # Shared forge-saw gateway for ABEvalFlow OpenClaw evals
 
+> **Namespace-local gateway (current path).** The files below stand up a gateway
+> and an eval stack in any namespace, with authentication left on:
+>
+> | File | What it is for |
+> |---|---|
+> | `values-namespace-gateway.yaml` | Helm values for a standalone `openshell-saw` gateway VM |
+> | `gateway-postinstall.sh` | Exports the VM's mTLS client identity, adds the CI subject to the gateway workspace, and configures the provider and inference route |
+> | `networkpolicy-eval-stack.yaml` | Lets the eval stack, Tekton and kubelet probes talk, under the forge-workspace default-deny rules |
+> | `networkpolicy-saw-gateway.yaml` | Same, for the gateway VM and its setup Job |
+>
+> End-to-end instructions, including how to run an evaluation and read the
+> results, are in the repository README. Symptom-to-cause notes are in
+> `Docs/openshell-eval-troubleshooting.md`.
+>
+> The sections below describe the earlier single-VM `abeval-saw` flow.
+
 Install **once**. Evaluate PipelineRuns only call
 `python -m agent_eval.openshell.run` against the in-cluster gateway. They
 never Helm-install SAW.

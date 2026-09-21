@@ -1,0 +1,57 @@
+# NetworkPolicies for the OpenShell gateway VM when it shares a namespace with
+# ABEvalFlow and the forge-workspace default-deny rules.
+#
+# The standalone openshell-saw chart does not label its setup Job
+# app.kubernetes.io/component=setup, so the chart's own
+# forge-workspace-allow-kubernetes-api policy never matches it and the Job hangs
+# on "couldn't get current server API group list". Both the Job and the VM pod do
+# carry app.kubernetes.io/part-of=openshell-cnv-fedora, so select on that.
+#
+#     oc apply -n <your-namespace> -f networkpolicy-saw-gateway.yaml
+#
+# NODE_CIDR: see the note in networkpolicy-eval-stack.yaml.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: abevalflow-allow-saw-egress
+  labels: {app.kubernetes.io/part-of: abevalflow}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/part-of: openshell-cnv-fedora}
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 6443}
+      to:
+        - ipBlock: {cidr: 172.30.0.1/32}   # kubernetes.default.svc ClusterIP
+        - ipBlock: {cidr: 10.0.0.0/16}     # NODE_CIDR
+    # model traffic to the namespace-local LiteLLM, plus MLflow and minio
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/part-of: abevalflow}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: abevalflow-allow-saw-ingress
+  labels: {app.kubernetes.io/part-of: abevalflow}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/part-of: openshell-cnv-fedora}
+  policyTypes: [Ingress]
+  ingress:
+    # pipeline pods create sandboxes over the gateway port
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/managed-by: tekton-pipelines}
+      ports:
+        - {protocol: TCP, port: 17670}
+        - {protocol: TCP, port: 8443}
+    # OpenShift Virtualization needs to reach the VM
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: openshift-cnv}
+    - from:
+        - ipBlock: {cidr: 10.0.0.0/16}     # NODE_CIDR
